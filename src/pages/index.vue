@@ -5,7 +5,7 @@ const board = computed(() => play.board)
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col items-center justify-center">
     <div>
       Minesweeper
     </div>
