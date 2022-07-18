@@ -1,20 +1,9 @@
 <script setup lang="ts">
-interface BlockState {
-  x: number
-  y: number
-  /** 是否被翻开 */
-  revealed?: boolean
-  /** 是否是炸弹 */
-  mine?: boolean
-  /** 是否插旗 */
-  flagged?: boolean
-  /** 周围炸弹个数 */
-  adjacentMines: number
-}
+import type { BlockState } from '~/types'
 
-const HEIGHT = 10
-const WIDTH = 10
-const state = reactive(
+const HEIGHT = 5
+const WIDTH = 5
+const state = $ref(
   Array.from({ length: HEIGHT }, (_, y) =>
     Array.from({ length: WIDTH }, (_, x): BlockState => ({ x, y, adjacentMines: 0 }),
     )))
@@ -67,22 +56,14 @@ function generateMines(initial: BlockState) {
 }
 
 function getBlockClass(block: BlockState) {
-  if (!block.revealed)
+  if (block.flagged)
     return 'bg-gray-500/30'
+  if (!block.revealed)
+    return 'bg-gray-500/30 hover:bg-gray-300/50'
   return block.mine ? 'bg-red-500/50' : numberColors[block.adjacentMines]
 }
 let mineGenerated = false
 const dev = true
-function onCLick(block: BlockState) {
-  if (!mineGenerated) {
-    generateMines(block)
-    mineGenerated = true
-  }
-  block.revealed = true
-  if (block.mine)
-    alert('BOOOM!')
-  expendZero(block)
-}
 
 function expendZero(block: BlockState) {
   if (block.adjacentMines)
@@ -96,6 +77,21 @@ function expendZero(block: BlockState) {
   })
 }
 
+// watchEffect(checkGameStatus)
+
+function checkGameStatus() {
+  if (!mineGenerated)
+    return
+
+  const blocks = state.flat()
+  if (blocks.every(b => b.revealed || b.flagged)) {
+    if (blocks.some(b => b.flagged && !b.mine))
+      alert('You cheat!!!')
+    else
+      alert('You win!!!')
+  }
+}
+
 function getSiblings(block: BlockState) {
   return directions.map(([dx, dy]) => {
     const x2 = block.x + dx
@@ -104,6 +100,25 @@ function getSiblings(block: BlockState) {
       return undefined
     return state[y2][x2]
   }).filter(Boolean) as BlockState[]
+}
+
+function onRightClick(block: BlockState) {
+  if (block.revealed)
+    return
+  block.flagged = !block.flagged
+  checkGameStatus()
+}
+
+function onCLick(block: BlockState) {
+  if (!mineGenerated) {
+    generateMines(block)
+    mineGenerated = true
+  }
+  block.revealed = true
+  if (block.mine)
+    alert('BOOOM!')
+  expendZero(block)
+  checkGameStatus()
 }
 </script>
 
@@ -124,12 +139,15 @@ function getSiblings(block: BlockState) {
           flex="~"
           items-center justify-center gap-1
           w-10 h-10
-          hover="bg-gray/30"
           border="1 gray/30"
           :class="getBlockClass(block)"
           @click="onCLick(block)"
+          @contextmenu.prevent="onRightClick(block)"
         >
-          <template v-if="block.revealed || dev">
+          <template v-if="block.flagged">
+            <div i-mdi-flag text-red />
+          </template>
+          <template v-else-if="block.revealed || dev">
             <div v-if="block.mine" i-mdi-mine />
             <div v-else>
               {{ block.adjacentMines }}
