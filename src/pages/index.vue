@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const play = new GamePlay(12, 12)
+useStorage('vue-minesweeper', play.state)
+const board = computed(() => play.board)
 </script>
 
 <template>
@@ -17,7 +19,7 @@ const play = new GamePlay(12, 12)
     </div>
     <div>
       <div
-        v-for="row, y in play.state.value" :key="y"
+        v-for="row, y in board" :key="y"
         flex="~ gap-1 items-center justify-center"
         m-1
       >

@@ -1,3 +1,4 @@
+import type { Ref } from 'vue'
 import type { BlockState } from '~/types'
 const directions = [
   [1, 1],
@@ -9,22 +10,35 @@ const directions = [
   [-1, 0],
   [-1, -1],
 ]
+
+interface GameState {
+  board: BlockState[][]
+  mineGenerated: boolean
+  gameState: 'playing' | 'won' | 'lost'
+}
+
 export class GamePlay {
-  state = ref<BlockState[][]>([])
-  mineGenerated = false
+  state = ref() as Ref<GameState>
   constructor(public width: number, public height: number) {
     this.reset()
   }
 
+  get board() {
+    return this.state.value.board
+  }
+
   reset() {
-    this.mineGenerated = false
-    this.state.value = Array.from({ length: this.height }, (_, y) =>
-      Array.from({ length: this.width }, (_, x): BlockState => ({ x, y, adjacentMines: 0 }),
-      ))
+    this.state.value = {
+      board: Array.from({ length: this.height }, (_, y) =>
+        Array.from({ length: this.width }, (_, x): BlockState => ({ x, y, adjacentMines: 0 }),
+        )),
+      gameState: 'playing',
+      mineGenerated: false,
+    }
   }
 
   updateNumbers() {
-    this.state.value.forEach((row) => {
+    this.board.forEach((row) => {
       row.forEach((block) => {
         this.getSiblings(block).forEach((b) => {
           if (b.mine)
@@ -35,7 +49,7 @@ export class GamePlay {
   }
 
   generateMines(initial: BlockState) {
-    for (const row of this.state.value) {
+    for (const row of this.board) {
       for (const block of row) {
         if (Math.abs(initial.x - block.x) <= 1)
           continue
@@ -62,16 +76,30 @@ export class GamePlay {
   // watchEffect(checkGameStatus)
 
   checkGameStatus() {
-    if (!this.mineGenerated)
+    if (!this.state.value.mineGenerated)
       return
 
-    const blocks = this.state.value.flat()
+    const blocks = this.board.flat()
     if (blocks.every(b => b.revealed || b.flagged)) {
       if (blocks.some(b => b.flagged && !b.mine))
-        alert('You cheat!!!')
+        this.showLostGame()
+
       else
         alert('You win!!!')
     }
+  }
+
+  showLostGame() {
+    this.state.value.gameState = 'lost'
+    this.board.flat().forEach((b) => {
+      b.flagged = false
+      b.revealed = true
+    })
+  }
+
+  showWonGame() {
+    this.state.value.gameState = 'won'
+    alert('You win!!!')
   }
 
   getSiblings(block: BlockState) {
@@ -80,7 +108,7 @@ export class GamePlay {
       const y2 = block.y + dy
       if (x2 < 0 || x2 >= this.width || y2 < 0 || y2 >= this.height)
         return undefined
-      return this.state.value[y2][x2]
+      return this.board[y2][x2]
     }).filter(Boolean) as BlockState[]
   }
 
@@ -94,17 +122,13 @@ export class GamePlay {
   onCLick(block: BlockState) {
     if (block.revealed)
       return
-    if (!this.mineGenerated) {
+    if (!this.state.value.mineGenerated) {
       this.generateMines(block)
-      this.mineGenerated = true
+      this.state.value.mineGenerated = true
     }
     block.revealed = true
     if (block.mine) {
-      alert('BOOOM!')
-      this.state.value.flat().forEach((b) => {
-        b.flagged = false
-        b.revealed = true
-      })
+      this.showLostGame()
       return
     }
     this.expendZero(block)
