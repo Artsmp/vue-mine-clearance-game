@@ -1,7 +1,13 @@
 <script setup lang="ts">
-const play = new GamePlay(12, 12)
+import Confetti from '~/components/Confetti.vue'
+const play = new GamePlay(5, 5, 1)
 useStorage('vue-minesweeper', play.state)
 const board = computed(() => play.board)
+const restCount = computed(() => play.blocks.reduce((a, b) => {
+  if (b.flagged)
+    return a - 1
+  return a
+}, play.mineCount))
 </script>
 
 <template>
@@ -9,13 +15,30 @@ const board = computed(() => play.board)
     <div>
       Minesweeper
     </div>
-    <div my-5>
-      <button mx-1 btn text-sm @click="toggleDev()">
+    <div my-5 flex="~ gap-2 wrap">
+      <button btn @click="toggleDev()">
         {{ isDev ? 'NORMAL' : 'DEV' }}
       </button>
-      <button mx-1 btn text-sm @click="play.reset()">
-        RESET
+      <button btn @click="play.reset()">
+        REPLAY
       </button>
+    </div>
+    <div mb-5 flex="~ gap-2 wrap">
+      <button btn bg-green-600 hover:bg-green-700 @click="play.reset()">
+        SIMPLE
+      </button>
+      <button btn bg-purple-600 hover:bg-purple-700 @click="play.reset()">
+        HARD
+      </button>
+      <button btn bg-red-600 hover:bg-red-700 @click="play.reset()">
+        HELL
+      </button>
+    </div>
+    <div mb-5 flex="~ gap-2 wrap">
+      <div flex="~ gap-1" items-center h-full>
+        <div i-mdi-mine />
+        <span>{{ restCount }}</span>
+      </div>
     </div>
     <div>
       <div
@@ -30,5 +53,6 @@ const board = computed(() => play.board)
         />
       </div>
     </div>
+    <Confetti :passed="play.state.value.gameState === 'won'" />
   </div>
 </template>

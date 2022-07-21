@@ -19,12 +19,29 @@ interface GameState {
 
 export class GamePlay {
   state = ref() as Ref<GameState>
-  constructor(public width: number, public height: number) {
+  constructor(
+    public width: number,
+    public height: number,
+    public mineCount: number = 10,
+    public playTime: Date = new Date(),
+  ) {
     this.reset()
   }
 
   get board() {
     return this.state.value.board
+  }
+
+  get blocks() {
+    return this.state.value.board.flat()
+  }
+
+  random(min: number, max: number) {
+    return Math.random() * (max - min) + min
+  }
+
+  randomInt(min: number, max: number) {
+    return Math.round(this.random(min, max))
   }
 
   reset() {
@@ -38,32 +55,46 @@ export class GamePlay {
   }
 
   updateNumbers() {
-    this.board.forEach((row) => {
-      row.forEach((block) => {
-        this.getSiblings(block).forEach((b) => {
-          if (b.mine)
-            block.adjacentMines++
-        })
+    this.blocks.forEach((block) => {
+      // 如果自己是炸弹那就没必要开始计算了
+      if (block.mine)
+        return
+        // 获取到自己的兄弟，如果兄弟是炸弹就＋1
+      this.getSiblings(block).forEach((b) => {
+        if (b.mine)
+          block.adjacentMines++
       })
     })
   }
 
-  generateMines(initial: BlockState) {
-    for (const row of this.board) {
-      for (const block of row) {
-        if (Math.abs(initial.x - block.x) <= 1)
-          continue
-        if (Math.abs(initial.y - block.y) <= 1)
-          continue
-        block.mine = Math.random() < 0.3
-      }
+  /** 生成炸弹 */
+  generateMines(state: BlockState[][], initial: BlockState) {
+    const placeRandom = () => {
+      const x = this.randomInt(0, this.width - 1)
+      const y = this.randomInt(0, this.height - 1)
+      const block = state[y][x]
+      if (block.mine)
+        return false
+      if (Math.abs(initial.x - block.x) <= 1)
+        return false
+      if (Math.abs(initial.y - block.y) <= 1)
+        return false
+      return block.mine = true
+    }
+    for (let count = 0; count < this.mineCount; count++) {
+      let placed = false
+      while (!placed)
+        placed = placeRandom()
     }
     this.updateNumbers()
   }
 
+  /** 展开 0 的区块 */
   expendZero(block: BlockState) {
+    // 不为 0，直接返回，不进行展开
     if (block.adjacentMines)
       return
+    // 获取兄弟，为 0 的且未被翻开的再进行翻开
     const sibs = this.getSiblings(block)
     sibs.forEach((b) => {
       if (!b.revealed) {
@@ -73,22 +104,21 @@ export class GamePlay {
     })
   }
 
-  // watchEffect(checkGameStatus)
-
   checkGameStatus() {
+    // mineGenerated 为 true 才表明开始了游戏
     if (!this.state.value.mineGenerated)
       return
-
-    const blocks = this.board.flat()
-    if (blocks.every(b => b.revealed || b.flagged)) {
-      if (blocks.some(b => b.flagged && !b.mine))
+    // 打平，判断如果每一个都翻开或者被标记了。才开始判断游戏状态
+    if (this.blocks.every(b => b.revealed || b.flagged)) {
+      // 但凡有一个被标记但是不是炸弹的就输了游戏
+      if (this.blocks.some(b => b.flagged && !b.mine))
         this.showLostGame()
-
       else
-        alert('You win!!!')
+        this.state.value.gameState = 'won'
     }
   }
 
+  /** 输了游戏的话翻开所有牌子，显示炸弹，隐藏旗子 */
   showLostGame() {
     this.state.value.gameState = 'lost'
     this.board.flat().forEach((b) => {
@@ -120,18 +150,24 @@ export class GamePlay {
   }
 
   onCLick(block: BlockState) {
+    // 已经翻开的就暂停
     if (block.revealed)
       return
+    // 在首次点击的时候判断是否已经生成过炸弹
     if (!this.state.value.mineGenerated) {
-      this.generateMines(block)
+      this.generateMines(this.board, block)
       this.state.value.mineGenerated = true
     }
+    // 翻开
     block.revealed = true
     if (block.mine) {
+      // 是炸弹
       this.showLostGame()
       return
     }
+    // 展开逻辑
     this.expendZero(block)
+    // 检查游戏是否完成
     this.checkGameStatus()
   }
 }
