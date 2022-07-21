@@ -133,6 +133,7 @@ export class GamePlay {
 
   showWonGame() {
     this.state.value.gameState = 'won'
+    // eslint-disable-next-line no-alert
     alert('You win!!!')
   }
 
@@ -155,7 +156,7 @@ export class GamePlay {
 
   onCLick(block: BlockState) {
     // 已经翻开的就暂停
-    if (block.revealed)
+    if (block.revealed || block.flagged)
       return
     // 在首次点击的时候判断是否已经生成过炸弹
     if (!this.state.value.mineGenerated) {
