@@ -14,7 +14,8 @@ const directions = [
 interface GameState {
   board: BlockState[][]
   mineGenerated: boolean
-  gameState: 'playing' | 'won' | 'lost'
+  gameState: 'playing' | 'won' | 'lost' | 'init'
+  startMS: number
 }
 
 export class GamePlay {
@@ -23,7 +24,6 @@ export class GamePlay {
     public width: number,
     public height: number,
     public mineCount: number = 10,
-    public playTime: Date = new Date(),
   ) {
     this.reset()
   }
@@ -44,13 +44,17 @@ export class GamePlay {
     return Math.round(this.random(min, max))
   }
 
-  reset() {
+  reset(width = this.width, height = this.height, mines = this.mineCount) {
+    this.width = width
+    this.height = height
+    this.mineCount = mines
     this.state.value = {
+      gameState: 'init',
+      mineGenerated: false,
+      startMS: +Date.now(),
       board: Array.from({ length: this.height }, (_, y) =>
         Array.from({ length: this.width }, (_, x): BlockState => ({ x, y, adjacentMines: 0 }),
         )),
-      gameState: 'playing',
-      mineGenerated: false,
     }
   }
 
@@ -157,6 +161,7 @@ export class GamePlay {
     if (!this.state.value.mineGenerated) {
       this.generateMines(this.board, block)
       this.state.value.mineGenerated = true
+      this.state.value.gameState = 'playing'
     }
     // 翻开
     block.revealed = true
