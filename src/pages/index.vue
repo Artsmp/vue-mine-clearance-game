@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import Confetti from '~/components/Confetti.vue'
-const play = new GamePlay(5, 5, 1)
+const play = new GamePlay(9, 9, 10)
 
-const now = useNow()
+const now = useNow({ interval: 1000 })
 const timerNS = computed(() => {
-  if (play.state.value.gameState === 'playing')
-    return Math.round((+now.value - play.state.value.startMS) / 1000)
+  if (play.state.value.gameState === 'playing' || play.state.value.gameState === 'won')
+    return Math.round(((play.state.value.endMS ?? +now.value) - play.state.value.startMS) / 1000)
   return 0
 })
 useStorage('vue-minesweeper', play.state)
+
 const board = computed(() => play.board)
-const restCount = computed(() => play.blocks.reduce((a, b) => {
-  if (b.flagged)
-    return a - 1
-  return a
-}, play.mineCount))
+const restCount = computed(() => {
+  if (!play.state.value.mineGenerated)
+    return play.mineCount
+  return play.blocks.reduce((a, b) => a - (b.flagged ? 1 : 0), play.mineCount)
+})
 
 function newGame(difficulty: 'easy' | 'hard' | 'hell') {
   switch (difficulty) {

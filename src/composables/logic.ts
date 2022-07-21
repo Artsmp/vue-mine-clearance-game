@@ -16,6 +16,7 @@ interface GameState {
   mineGenerated: boolean
   gameState: 'playing' | 'won' | 'lost' | 'init'
   startMS: number
+  endMS: number | null
 }
 
 export class GamePlay {
@@ -49,9 +50,10 @@ export class GamePlay {
     this.height = height
     this.mineCount = mines
     this.state.value = {
+      endMS: null,
+      startMS: +Date.now(),
       gameState: 'init',
       mineGenerated: false,
-      startMS: +Date.now(),
       board: Array.from({ length: this.height }, (_, y) =>
         Array.from({ length: this.width }, (_, x): BlockState => ({ x, y, adjacentMines: 0 }),
         )),
@@ -118,7 +120,7 @@ export class GamePlay {
       if (this.blocks.some(b => b.flagged && !b.mine))
         this.showLostGame()
       else
-        this.state.value.gameState = 'won'
+        this.showWonGame()
     }
   }
 
@@ -129,12 +131,13 @@ export class GamePlay {
       b.flagged = false
       b.revealed = true
     })
+    // eslint-disable-next-line no-alert
+    alert('you lost！！！')
   }
 
   showWonGame() {
     this.state.value.gameState = 'won'
-    // eslint-disable-next-line no-alert
-    alert('You win!!!')
+    this.state.value.endMS = +Date.now()
   }
 
   getSiblings(block: BlockState) {
@@ -163,6 +166,7 @@ export class GamePlay {
       this.generateMines(this.board, block)
       this.state.value.mineGenerated = true
       this.state.value.gameState = 'playing'
+      this.state.value.startMS = Date.now()
     }
     // 翻开
     block.revealed = true
